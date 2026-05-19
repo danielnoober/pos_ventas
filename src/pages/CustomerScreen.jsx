@@ -11,7 +11,7 @@ import { supabase } from '../lib/supabase'
 import { listenState } from '../lib/posChannel'
 import { Star, Gift } from 'lucide-react'
 
-const IDLE_TIMEOUT_MS = 30000 // go back to slides after 30s of no activity
+const IDLE_TIMEOUT_MS = 60000 // go back to slides after 60s of no activity
 
 export default function CustomerScreen() {
   const [posState, setPosState]   = useState(null)   // last broadcast from operator
@@ -152,7 +152,7 @@ function IdleScreen({ slides, slideIdx }) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   ACTIVE SCREEN — show order + points + mini slides
+   ACTIVE SCREEN — show order + points + gifts
 ══════════════════════════════════════════════════════════════ */
 function ActiveScreen({ state, slides, slideIdx, gifts = [] }) {
   const { order = [], client, cashReceived, lastPurchase } = state
@@ -167,42 +167,43 @@ function ActiveScreen({ state, slides, slideIdx, gifts = [] }) {
   const change     = cash - total
   const currentPts = client?.points ?? 0
 
-  const r = 80, cx = 95, cy = 95
-  const circumference = 2 * Math.PI * r
-  const deg       = Math.min((currentPts / 1000) * 360, 360)
-  const dashOffset = circumference - (deg / 360) * circumference
-
-  const isCompleted = lastPurchase && validOrder.length === 0
+  const isCompleted  = lastPurchase && validOrder.length === 0
   const displayItems = isCompleted ? lastPurchase.items : validOrder
 
   const OP_COLORS = { Entel: '#00AEEF', Viva: '#43A047', Tigo: '#1A3A8F', General: '#F57C00' }
   const OP_BG     = { Entel: '#E3F6FF', Viva: '#E8F5E9', Tigo: '#E8EDF8', General: '#FFF3E0' }
 
+  // Circle params — bigger
+  const svgSize = 320, svgCx = 160, svgCy = 160, svgR = 138
+  const svgCirc = 2 * Math.PI * svgR
+  const ptsDisplay = isCompleted ? (lastPurchase.newPts ?? currentPts) : currentPts
+  const svgDash = svgCirc - (Math.min(ptsDisplay / 1000, 1)) * svgCirc
+
   return (
     <div style={{ width: '100vw', height: '100vh', background: '#f8f9fc', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Top strip */}
-      <div style={{ height: 6, background: 'linear-gradient(90deg, #D32F2F 0%, #1565C0 100%)', flexShrink: 0 }} />
+      <div style={{ height: 7, background: 'linear-gradient(90deg, #D32F2F 0%, #1565C0 100%)', flexShrink: 0 }} />
 
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '40% 60%', overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '55% 45%', overflow: 'hidden' }}>
 
-        {/* ── LEFT: order ── */}
-        <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', borderRight: '1px solid #e2e6ef', overflow: 'hidden' }}>
+        {/* ── LEFT: order detail ── */}
+        <div style={{ padding: '28px 32px', display: 'flex', flexDirection: 'column', borderRight: '1px solid #e2e6ef', overflow: 'hidden' }}>
 
-          {/* Welcome header */}
+          {/* Welcome */}
           <div style={{ marginBottom: 20, flexShrink: 0 }}>
             {isCompleted ? (
               <>
-                <div style={{ fontSize: 40, fontWeight: 900, lineHeight: 1.1 }}>
+                <div style={{ fontSize: 46, fontWeight: 900, lineHeight: 1.1 }}>
                   ¡Gracias, <span style={{ color: '#D32F2F' }}>{lastPurchase.client?.full_name?.split(' ')[0]}!</span>
                 </div>
-                <div style={{ color: '#6B7280', fontSize: 17, marginTop: 6 }}>Compra registrada correctamente ✓</div>
+                <div style={{ color: '#6B7280', fontSize: 20, marginTop: 8 }}>Compra registrada ✓</div>
               </>
             ) : (
               <>
-                <div style={{ fontSize: 40, fontWeight: 900, lineHeight: 1.1 }}>
+                <div style={{ fontSize: 46, fontWeight: 900, lineHeight: 1.1 }}>
                   {client ? <>Hola, <span style={{ color: '#D32F2F' }}>{client.full_name.split(' ')[0]}</span>!</> : 'Bienvenido'}
                 </div>
-                <div style={{ color: '#6B7280', fontSize: 17, marginTop: 6 }}>Tu pedido en tiempo real</div>
+                <div style={{ color: '#6B7280', fontSize: 20, marginTop: 8 }}>Tu pedido en tiempo real</div>
               </>
             )}
           </div>
@@ -211,15 +212,13 @@ function ActiveScreen({ state, slides, slideIdx, gifts = [] }) {
           {displayItems.length > 0 && (
             <div style={{
               display: 'grid',
-              gridTemplateColumns: '44px 1fr 54px 72px 88px',
-              gap: 10,
-              paddingBottom: 10,
+              gridTemplateColumns: '68px 1fr 60px 90px 100px',
+              gap: 10, paddingBottom: 12,
               borderBottom: '2px solid #e2e6ef',
-              fontSize: 12, fontWeight: 700, color: '#9CA3AF',
-              textTransform: 'uppercase', letterSpacing: '.5px',
-              flexShrink: 0,
+              fontSize: 14, fontWeight: 700, color: '#9CA3AF',
+              textTransform: 'uppercase', letterSpacing: '.5px', flexShrink: 0,
             }}>
-              <span></span>
+              <span />
               <span>Producto</span>
               <span style={{ textAlign: 'center' }}>Cant.</span>
               <span style={{ textAlign: 'right' }}>P. Unit.</span>
@@ -227,64 +226,63 @@ function ActiveScreen({ state, slides, slideIdx, gifts = [] }) {
             </div>
           )}
 
-          {/* Items */}
+          {/* Items list */}
           <div style={{ flex: 1, overflowY: 'auto' }}>
             {displayItems.length === 0 ? (
-              <div style={{ color: '#9CA3AF', fontSize: 18, paddingTop: 24 }}>Aún no hay productos en el pedido…</div>
+              <div style={{ color: '#9CA3AF', fontSize: 22, paddingTop: 28 }}>Aún no hay productos…</div>
             ) : (
               displayItems.map((item, i) => {
-                const qty      = parseInt(item.quantity)
-                const opColor  = OP_COLORS[item.operator] || '#999'
-                const opBg     = OP_BG[item.operator]     || '#f5f5f5'
-                const disc     = parseFloat(item.discount) || 0
-                const effPrice = item.effectivePrice != null
+                const qty       = parseInt(item.quantity)
+                const opColor   = OP_COLORS[item.operator] || '#999'
+                const opBg      = OP_BG[item.operator]     || '#f5f5f5'
+                const disc      = parseFloat(item.discount) || 0
+                const effPrice  = item.effectivePrice != null
                   ? parseFloat(item.effectivePrice)
                   : Math.max(0, parseFloat(item.product_price) - disc)
                 const origPrice = parseFloat(item.product_price).toFixed(2)
                 const subtotal  = (effPrice * qty).toFixed(2)
-                const hasDisc   = disc > 0 || (item.effectivePrice != null && item.effectivePrice !== item.product_price)
+                const hasDisc   = disc > 0 || (item.effectivePrice != null && parseFloat(item.effectivePrice) !== parseFloat(item.product_price))
                 return (
                   <div key={i} style={{
                     display: 'grid',
-                    gridTemplateColumns: '44px 1fr 54px 72px 88px',
-                    gap: 10,
-                    padding: '12px 0',
+                    gridTemplateColumns: '68px 1fr 60px 90px 100px',
+                    gap: 10, padding: '14px 0',
                     borderBottom: '1px solid #e2e6ef',
                     alignItems: 'center',
                   }}>
-                    {/* Image */}
+                    {/* Image — bigger */}
                     <div style={{
-                      width: 48, height: 48, borderRadius: 10, overflow: 'hidden', flexShrink: 0,
+                      width: 62, height: 62, borderRadius: 12, overflow: 'hidden', flexShrink: 0,
                       background: opBg, display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
                       {item.product_image
                         ? <img src={item.product_image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        : <span style={{ fontSize: 16, fontWeight: 900, color: opColor }}>{item.operator?.[0]}</span>
+                        : <span style={{ fontSize: 22, fontWeight: 900, color: opColor }}>{item.operator?.[0]}</span>
                       }
                     </div>
 
-                    {/* Name + operator + discount badge */}
+                    {/* Name + discount */}
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: 17, lineHeight: 1.25 }}>{item.product_name}</div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: opColor, marginTop: 2 }}>{item.operator}</div>
+                      <div style={{ fontWeight: 800, fontSize: 20, lineHeight: 1.2 }}>{item.product_name}</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: opColor, marginTop: 2 }}>{item.operator}</div>
                       {hasDisc && (
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 3, background: '#ECFDF5', border: '1px solid #6EE7B7', borderRadius: 6, padding: '1px 7px' }}>
-                          <span style={{ fontSize: 11, color: '#9CA3AF', textDecoration: 'line-through' }}>Bs. {origPrice}</span>
-                          <span style={{ fontSize: 12, fontWeight: 800, color: '#1B8A5A' }}>→ Bs. {effPrice.toFixed(2)}</span>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 4, background: '#ECFDF5', border: '1px solid #6EE7B7', borderRadius: 6, padding: '2px 9px' }}>
+                          <span style={{ fontSize: 13, color: '#9CA3AF', textDecoration: 'line-through' }}>Bs. {origPrice}</span>
+                          <span style={{ fontSize: 14, fontWeight: 800, color: '#1B8A5A' }}>→ Bs. {effPrice.toFixed(2)}</span>
                         </div>
                       )}
                     </div>
 
                     {/* Qty */}
-                    <div style={{ fontSize: 20, fontWeight: 800, textAlign: 'center', color: '#111827' }}>×{qty}</div>
+                    <div style={{ fontSize: 26, fontWeight: 900, textAlign: 'center', color: '#111827' }}>×{qty}</div>
 
-                    {/* Unit price (effective) */}
-                    <div style={{ fontSize: 16, fontWeight: 700, textAlign: 'right', color: hasDisc ? '#1B8A5A' : '#6B7280' }}>
+                    {/* Unit price */}
+                    <div style={{ fontSize: 19, fontWeight: 700, textAlign: 'right', color: hasDisc ? '#1B8A5A' : '#6B7280' }}>
                       Bs. {effPrice.toFixed(2)}
                     </div>
 
                     {/* Subtotal */}
-                    <div style={{ fontSize: 20, fontWeight: 900, color: '#D32F2F', textAlign: 'right' }}>
+                    <div style={{ fontSize: 24, fontWeight: 900, color: '#D32F2F', textAlign: 'right' }}>
                       Bs. {subtotal}
                     </div>
                   </div>
@@ -294,26 +292,26 @@ function ActiveScreen({ state, slides, slideIdx, gifts = [] }) {
           </div>
 
           {/* Footer totals */}
-          <div style={{ flexShrink: 0, borderTop: '2px solid #e2e6ef', paddingTop: 16, marginTop: 10 }}>
+          <div style={{ flexShrink: 0, borderTop: '2px solid #e2e6ef', paddingTop: 18, marginTop: 12 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <span style={{ fontSize: 20, fontWeight: 700, color: '#6B7280' }}>TOTAL</span>
-              <span style={{ fontSize: 46, fontWeight: 900, color: '#111827' }}>
+              <span style={{ fontSize: 24, fontWeight: 700, color: '#6B7280' }}>TOTAL</span>
+              <span style={{ fontSize: 56, fontWeight: 900, color: '#111827' }}>
                 Bs. {(isCompleted ? lastPurchase.total : total).toFixed(2)}
               </span>
             </div>
 
             {(isCompleted ? lastPurchase.cash > 0 : cash > 0) && (
-              <div style={{ display: 'flex', gap: 12, marginTop: 10 }}>
-                <div style={{ flex: 1, background: '#F0F2F7', borderRadius: 10, padding: '10px 16px' }}>
-                  <div style={{ fontSize: 12, color: '#9CA3AF', fontWeight: 700, textTransform: 'uppercase' }}>Efectivo</div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: '#111827' }}>Bs. {(isCompleted ? lastPurchase.cash : cash).toFixed(2)}</div>
+              <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
+                <div style={{ flex: 1, background: '#F0F2F7', borderRadius: 12, padding: '12px 18px' }}>
+                  <div style={{ fontSize: 14, color: '#9CA3AF', fontWeight: 700, textTransform: 'uppercase' }}>Efectivo</div>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: '#111827' }}>Bs. {(isCompleted ? lastPurchase.cash : cash).toFixed(2)}</div>
                 </div>
                 <div style={{
-                  flex: 1, borderRadius: 10, padding: '10px 16px',
+                  flex: 1, borderRadius: 12, padding: '12px 18px',
                   background: (isCompleted ? lastPurchase.change : change) >= 0 ? '#ECFDF5' : '#FEE2E2',
                 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: (isCompleted ? lastPurchase.change : change) >= 0 ? '#1B8A5A' : '#D32F2F' }}>Cambio</div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: (isCompleted ? lastPurchase.change : change) >= 0 ? '#1B8A5A' : '#D32F2F' }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, textTransform: 'uppercase', color: (isCompleted ? lastPurchase.change : change) >= 0 ? '#1B8A5A' : '#D32F2F' }}>Cambio</div>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: (isCompleted ? lastPurchase.change : change) >= 0 ? '#1B8A5A' : '#D32F2F' }}>
                     Bs. {Math.max(0, isCompleted ? lastPurchase.change : change).toFixed(2)}
                   </div>
                 </div>
@@ -321,9 +319,9 @@ function ActiveScreen({ state, slides, slideIdx, gifts = [] }) {
             )}
 
             {(isCompleted ? lastPurchase.ptsEarn : ptsEarn) > 0 && (
-              <div style={{ marginTop: 12, background: '#ECFDF5', border: '1.5px solid #6EE7B7', borderRadius: 10, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Star size={18} color="#1B8A5A" fill="#1B8A5A" />
-                <span style={{ color: '#1B8A5A', fontWeight: 700, fontSize: 16 }}>
+              <div style={{ marginTop: 14, background: '#ECFDF5', border: '1.5px solid #6EE7B7', borderRadius: 12, padding: '12px 18px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Star size={22} color="#1B8A5A" fill="#1B8A5A" />
+                <span style={{ color: '#1B8A5A', fontWeight: 700, fontSize: 20 }}>
                   {isCompleted ? `Ganaste ${lastPurchase.ptsEarn} puntos` : `Esta compra te dará ${ptsEarn} puntos`}
                 </span>
               </div>
@@ -331,88 +329,82 @@ function ActiveScreen({ state, slides, slideIdx, gifts = [] }) {
           </div>
         </div>
 
-        {/* ── RIGHT: bigger circle + gifts ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px 20px 16px', background: '#fff', overflowY: 'auto' }}>
+        {/* ── RIGHT: big circle fixed + gifts scrollable ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#fff', overflow: 'hidden' }}>
 
+          {/* Sección fija: círculo de puntos */}
+          <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px 20px 8px', width: '100%' }}>
           {/* Big points circle */}
-          {(() => {
-            const svgSize = 260, svgCx = 130, svgCy = 130, svgR = 112
-            const svgCirc = 2 * Math.PI * svgR
-            const svgDash = svgCirc - (Math.min(currentPts / 1000, 1) * 360 / 360) * svgCirc
-            return (
-              <svg width={svgSize} height={svgSize} viewBox={`0 0 ${svgSize} ${svgSize}`} style={{ flexShrink: 0 }}>
-                <circle cx={svgCx} cy={svgCy} r={svgR} fill="none" stroke="#e2e6ef" strokeWidth="16" />
-                <circle cx={svgCx} cy={svgCy} r={svgR} fill="none"
-                  stroke="url(#ptsg2)" strokeWidth="16"
-                  strokeDasharray={svgCirc}
-                  strokeDashoffset={svgDash}
-                  strokeLinecap="round"
-                  transform={`rotate(-90 ${svgCx} ${svgCy})`}
-                  style={{ transition: 'stroke-dashoffset .8s ease' }}
-                />
-                <defs>
-                  <linearGradient id="ptsg2" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#D32F2F" />
-                    <stop offset="100%" stopColor="#1565C0" />
-                  </linearGradient>
-                </defs>
-                <text x={svgCx} y={svgCy - 12} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="56" fontWeight="900" fill="#111827">
-                  {isCompleted ? (lastPurchase.newPts ?? currentPts) : currentPts}
-                </text>
-                <text x={svgCx} y={svgCy + 18} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="15" fontWeight="700" fill="#9CA3AF" letterSpacing="3">
-                  PUNTOS
-                </text>
-                {client && (
-                  <text x={svgCx} y={svgCy + 40} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="13" fontWeight="600" fill="#6B7280">
-                    {client.full_name.split(' ').slice(0, 2).join(' ')}
-                  </text>
-                )}
-              </svg>
-            )
-          })()}
+          <svg width={svgSize} height={svgSize} viewBox={`0 0 ${svgSize} ${svgSize}`}>
+            <circle cx={svgCx} cy={svgCy} r={svgR} fill="none" stroke="#e2e6ef" strokeWidth="18" />
+            <circle cx={svgCx} cy={svgCy} r={svgR} fill="none"
+              stroke="url(#ptsg2)" strokeWidth="18"
+              strokeDasharray={svgCirc}
+              strokeDashoffset={svgDash}
+              strokeLinecap="round"
+              transform={`rotate(-90 ${svgCx} ${svgCy})`}
+              style={{ transition: 'stroke-dashoffset .8s ease' }}
+            />
+            <defs>
+              <linearGradient id="ptsg2" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#D32F2F" />
+                <stop offset="100%" stopColor="#1565C0" />
+              </linearGradient>
+            </defs>
+            <text x={svgCx} y={svgCy - 18} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="72" fontWeight="900" fill="#111827">
+              {ptsDisplay}
+            </text>
+            <text x={svgCx} y={svgCy + 20} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="20" fontWeight="700" fill="#9CA3AF" letterSpacing="4">
+              PUNTOS
+            </text>
+            {client && (
+              <text x={svgCx} y={svgCy + 50} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="17" fontWeight="600" fill="#6B7280">
+                {client.full_name.split(' ').slice(0, 2).join(' ')}
+              </text>
+            )}
+          </svg>
 
-          <div style={{ textAlign: 'center', marginTop: 4 }}>
-            <div style={{ color: '#6B7280', fontSize: 13, lineHeight: 1.4 }}>
-              Cada <strong>Bs. 10</strong> = 1 punto
+          <div style={{ textAlign: 'center', marginBottom: 10 }}>
+            <div style={{ color: '#6B7280', fontSize: 15, lineHeight: 1.4 }}>
+              Cada <strong>Bs. 10</strong> = 1 punto · Canjéalos por regalos
             </div>
           </div>
+          </div>
 
-          {/* Gifts section — horizontal cards */}
+          {/* Sección con scroll: regalos */}
           {gifts.length > 0 && (
-            <div style={{ width: '100%', marginTop: 10 }}>
-              <div style={{ fontSize: 12, fontWeight: 800, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 10, textAlign: 'center' }}>
-                🎁 Regalos canjeables
+            <div style={{ flex: 1, overflowY: 'auto', width: '100%', padding: '0 20px 16px' }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 8, textAlign: 'center' }}>
+                🎁 Regalos disponibles
               </div>
-              {/* Horizontal scroll */}
-              <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 6 }}>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: `repeat(${Math.min(gifts.length, 3)}, 1fr)`,
+                gap: 8,
+              }}>
                 {gifts.map(g => {
-                  const canRedeem = currentPts >= g.points_required
+                  const canRedeem = ptsDisplay >= g.points_required
                   return (
                     <div key={g.id} style={{
-                      flexShrink: 0, width: 120,
                       background: canRedeem ? '#ECFDF5' : '#F9FAFB',
                       border: `2px solid ${canRedeem ? '#6EE7B7' : '#E2E6EF'}`,
                       borderRadius: 14, overflow: 'hidden',
-                      display: 'flex', flexDirection: 'column',
+                      display: 'flex', flexDirection: 'column', alignItems: 'center',
+                      padding: '10px 8px 12px',
                     }}>
-                      {/* Image */}
-                      <div style={{ width: '100%', height: 80, background: '#F0F2F7', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
+                      <div style={{ width: 64, height: 64, borderRadius: 10, overflow: 'hidden', background: '#F0F2F7', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
                         {g.image_url
                           ? <img src={g.image_url} alt={g.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          : <span style={{ fontSize: 32 }}>🎁</span>
+                          : <span style={{ fontSize: 28 }}>🎁</span>
                         }
                       </div>
-                      {/* Info */}
-                      <div style={{ padding: '7px 8px', flex: 1 }}>
-                        <div style={{ fontSize: 12, fontWeight: 800, lineHeight: 1.25, marginBottom: 4 }}>{g.name}</div>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: canRedeem ? '#1B8A5A' : '#9CA3AF' }}>
-                          ⭐ {g.points_required} pts
-                        </div>
-                        {canRedeem
-                          ? <div style={{ fontSize: 10, fontWeight: 800, color: '#1B8A5A', marginTop: 2 }}>✓ Disponible</div>
-                          : <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 2 }}>Faltan {g.points_required - currentPts}</div>
-                        }
+                      <div style={{ fontSize: 14, fontWeight: 800, textAlign: 'center', lineHeight: 1.2, marginBottom: 6, wordBreak: 'break-word' }}>{g.name}</div>
+                      <div style={{ fontSize: 15, fontWeight: 900, color: canRedeem ? '#1B8A5A' : '#9CA3AF' }}>
+                        ⭐ {g.points_required} pts
                       </div>
+                      {canRedeem && (
+                        <div style={{ fontSize: 12, fontWeight: 800, color: '#1B8A5A', marginTop: 3 }}>✓ Disponible</div>
+                      )}
                     </div>
                   )
                 })}
