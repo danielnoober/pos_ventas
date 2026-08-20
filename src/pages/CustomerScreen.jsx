@@ -7,13 +7,15 @@
  *  - ACTIVE: show order details + points when operator is working
  */
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { listenState } from '../lib/posChannel'
-import { Star, Gift } from 'lucide-react'
+import { Star, Gift, CheckCircle } from 'lucide-react'
 
 const IDLE_TIMEOUT_MS = 60000 // go back to slides after 60s of no activity
 
 export default function CustomerScreen() {
+  const { storeId } = useParams()
   const [posState, setPosState]   = useState(null)   // last broadcast from operator
   const [slides, setSlides]       = useState([])
   const [slideIdx, setSlideIdx]   = useState(0)
@@ -53,9 +55,10 @@ export default function CustomerScreen() {
     return () => clearInterval(t)
   }, [slides.length])
 
-  // Listen to POS broadcast
+  // Listen to POS broadcast — scoped to this store only
   useEffect(() => {
-    const unsub = listenState(payload => {
+    if (!storeId) return
+    const unsub = listenState(storeId, payload => {
       setPosState(payload)
 
       const hasActivity = payload.order?.length > 0 || payload.client
@@ -76,7 +79,7 @@ export default function CustomerScreen() {
       unsub()
       if (idleTimer.current) clearTimeout(idleTimer.current)
     }
-  }, [])
+  }, [storeId])
 
   if (mode === 'idle' || !posState) {
     return <IdleScreen slides={slides} slideIdx={slideIdx} />
@@ -196,7 +199,9 @@ function ActiveScreen({ state, slides, slideIdx, gifts = [] }) {
                 <div style={{ fontSize: 46, fontWeight: 900, lineHeight: 1.1 }}>
                   ¡Gracias, <span style={{ color: '#D32F2F' }}>{lastPurchase.client?.full_name?.split(' ')[0]}!</span>
                 </div>
-                <div style={{ color: '#6B7280', fontSize: 20, marginTop: 8 }}>Compra registrada ✓</div>
+                <div style={{ color: '#6B7280', fontSize: 20, marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  Compra registrada <CheckCircle size={20} color="#1B8A5A" />
+                </div>
               </>
             ) : (
               <>
@@ -374,8 +379,8 @@ function ActiveScreen({ state, slides, slideIdx, gifts = [] }) {
           {/* Sección con scroll: regalos */}
           {gifts.length > 0 && (
             <div style={{ flex: 1, overflowY: 'auto', width: '100%', padding: '0 20px 16px' }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 8, textAlign: 'center' }}>
-                🎁 Regalos disponibles
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <Gift size={14} /> Regalos disponibles
               </div>
               <div style={{
                 display: 'grid',
@@ -395,15 +400,17 @@ function ActiveScreen({ state, slides, slideIdx, gifts = [] }) {
                       <div style={{ width: 64, height: 64, borderRadius: 10, overflow: 'hidden', background: '#F0F2F7', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
                         {g.image_url
                           ? <img src={g.image_url} alt={g.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          : <span style={{ fontSize: 28 }}>🎁</span>
+                          : <Gift size={28} color="#9CA3AF" />
                         }
                       </div>
                       <div style={{ fontSize: 14, fontWeight: 800, textAlign: 'center', lineHeight: 1.2, marginBottom: 6, wordBreak: 'break-word' }}>{g.name}</div>
-                      <div style={{ fontSize: 15, fontWeight: 900, color: canRedeem ? '#1B8A5A' : '#9CA3AF' }}>
-                        ⭐ {g.points_required} pts
+                      <div style={{ fontSize: 15, fontWeight: 900, color: canRedeem ? '#1B8A5A' : '#9CA3AF', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Star size={13} fill="currentColor" /> {g.points_required} pts
                       </div>
                       {canRedeem && (
-                        <div style={{ fontSize: 12, fontWeight: 800, color: '#1B8A5A', marginTop: 3 }}>✓ Disponible</div>
+                        <div style={{ fontSize: 12, fontWeight: 800, color: '#1B8A5A', marginTop: 3, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <CheckCircle size={13} /> Disponible
+                        </div>
                       )}
                     </div>
                   )

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './lib/auth'
+import { StoreProvider, useStore } from './lib/store'
 import { broadcastState } from './lib/posChannel'
 import Layout from './components/Layout'
 import LoginPage      from './pages/LoginPage'
@@ -19,30 +20,32 @@ function RequireAuth({ children, adminOnly = false }) {
 
 function AppInner() {
   const { user } = useAuth()
+  const { currentStore } = useStore()
   const [order, setOrder]               = useState([])
   const [selectedClient, setSelectedClient] = useState(null)
   const [cashReceived, setCashReceived]  = useState('')
   const [lastPurchase, setLastPurchase]  = useState(null)
 
-  // Broadcast state whenever it changes
+  // Broadcast state whenever it changes — scoped to the currently active store
   useEffect(() => {
-    broadcastState({ order, client: selectedClient, cashReceived, lastPurchase })
-  }, [order, selectedClient, cashReceived, lastPurchase])
+    if (!currentStore) return
+    broadcastState(currentStore.id, { order, client: selectedClient, cashReceived, lastPurchase })
+  }, [currentStore, order, selectedClient, cashReceived, lastPurchase])
 
   if (!user) {
     return (
       <Routes>
-        <Route path="/login"   element={<LoginPage />} />
-        <Route path="/cliente" element={<CustomerScreen />} />
-        <Route path="*"        element={<Navigate to="/login" replace />} />
+        <Route path="/login"           element={<LoginPage />} />
+        <Route path="/cliente/:storeId" element={<CustomerScreen />} />
+        <Route path="*"                element={<Navigate to="/login" replace />} />
       </Routes>
     )
   }
 
   return (
     <Routes>
-      {/* Customer screen — standalone full-screen page */}
-      <Route path="/cliente" element={<CustomerScreen />} />
+      {/* Customer screen — standalone full-screen page, pinned to one store */}
+      <Route path="/cliente/:storeId" element={<CustomerScreen />} />
 
       {/* Operator app */}
       <Route path="*" element={
@@ -73,9 +76,11 @@ function AppInner() {
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <AppInner />
-      </BrowserRouter>
+      <StoreProvider>
+        <BrowserRouter>
+          <AppInner />
+        </BrowserRouter>
+      </StoreProvider>
     </AuthProvider>
   )
 }

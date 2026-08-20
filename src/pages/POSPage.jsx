@@ -2,8 +2,9 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from '../lib/toast'
 import { useAuth } from '../lib/auth'
+import { useStore } from '../lib/store'
 import { SearchInput, Modal } from '../components/UI'
-import { ShoppingCart, Trash2, CheckCircle, Star, Printer, UserPlus, X } from 'lucide-react'
+import { ShoppingCart, Trash2, CheckCircle, Star, Printer, UserPlus, X, Store } from 'lucide-react'
 
 const OPERATORS = ['Todos', 'Entel', 'Viva', 'Tigo', 'General']
 const OP_COLORS = { Entel: '#00AEEF', Viva: '#43A047', Tigo: '#1A3A8F', General: '#F57C00' }
@@ -45,6 +46,7 @@ export default function POSPage({
   lastPurchase, setLastPurchase,
 }) {
   const { user } = useAuth()
+  const { currentStore, stores, setCurrentStore } = useStore()
   const [products, setProducts]           = useState([])
   const [operator, setOperator]           = useState('Todos')
   const [clientQuery, setClientQuery]     = useState('')
@@ -54,9 +56,9 @@ export default function POSPage({
   const [newClientForm, setNewClientForm] = useState({ id: '', full_name: '' })
   const [savingClient, setSavingClient]   = useState(false)
 
-  useEffect(() => { fetchProducts() }, [])
+  useEffect(() => { if (currentStore) fetchProducts() }, [currentStore])
   const fetchProducts = async () => {
-    const { data } = await supabase.from('products').select('*')
+    const { data } = await supabase.from('products').select('*').eq('store_id', currentStore.id)
     setProducts(sortProducts(data || []))
   }
 
@@ -128,7 +130,7 @@ export default function POSPage({
   const change  = cash - total
 
   const checkout = async () => {
-    if (!selectedClient || !validOrder.length) return
+    if (!currentStore || !selectedClient || !validOrder.length) return
     if (order.some(i => !parseInt(i.quantity))) {
       toast('Hay productos sin cantidad válida', 'error'); return
     }
@@ -136,7 +138,7 @@ export default function POSPage({
     try {
       const { data: purchase, error: pErr } = await supabase
         .from('purchases')
-        .insert({ client_id: selectedClient.id, total, points_earned: ptsEarn, created_by: user.username })
+        .insert({ client_id: selectedClient.id, total, points_earned: ptsEarn, created_by: user.username, store_id: currentStore.id })
         .select().single()
       if (pErr) throw pErr
 
@@ -182,6 +184,7 @@ export default function POSPage({
     const clientForPrint = validOrder.length > 0 ? selectedClient : (lastPurchase?.client || null)
 
     const receipt = {
+      storeName: currentStore?.name || 'DISTRIBUIDORA COLQUE',
       client: clientForPrint,
       items: itemsToPrint.map(i => ({ ...i, effectivePrice: i.effectivePrice ?? (Math.max(0, parseFloat(i.product_price) - (parseFloat(i.discount) || 0))) })),
       total: totalToPrint,
@@ -241,6 +244,29 @@ export default function POSPage({
       return a.category.localeCompare(b.category)
     })
   })()
+
+  if (!currentStore) {
+    return (
+      <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="empty-state" style={{ maxWidth: 420, textAlign: 'center' }}>
+          <Store size={40} />
+          <p>Selecciona una tienda para empezar a vender</p>
+          {stores.length > 0 ? (
+            <select
+              className="input" style={{ marginTop: 12 }}
+              value=""
+              onChange={e => setCurrentStore(stores.find(s => s.id === e.target.value) || null)}
+            >
+              <option value="" disabled>Elige una tienda…</option>
+              {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          ) : (
+            <p style={{ fontSize: 13, color: 'var(--text3)' }}>Aún no hay tiendas creadas. Ve a Administración → Tiendas.</p>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <>
@@ -634,7 +660,7 @@ function buildReceiptHTML(p) {
   </style>
 </head>
 <body>
-  <div style="text-align:center;font-size:18px;font-weight:900;margin-bottom:1px">DISTRIBUIDORA COLQUE</div>
+  <div style="text-align:center;font-size:18px;font-weight:900;margin-bottom:1px">${p.storeName}</div>
   <div style="text-align:center;font-size:14px;font-weight:700">Tarjetas al por Mayor</div>
   <div style="text-align:center;font-size:14px;font-weight:700">Entel · Viva · Tigo</div>
   <hr>

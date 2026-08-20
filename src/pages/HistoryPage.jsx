@@ -36,7 +36,7 @@ export default function HistoryPage() {
     setSuggestions([])
     setLoading(true)
     const [{ data: purch }, { data: reds }] = await Promise.all([
-      supabase.from('purchases').select('*, purchase_items(*)').eq('client_id', c.id).order('created_at', { ascending: false }),
+      supabase.from('purchases').select('*, purchase_items(*), stores(name)').eq('client_id', c.id).order('created_at', { ascending: false }),
       supabase.from('redemptions').select('*').eq('client_id', c.id).order('created_at', { ascending: false }),
     ])
     setPurchases(purch || [])
@@ -98,6 +98,7 @@ export default function HistoryPage() {
               <table>
                 <thead><tr>
                   <th>Fecha</th>
+                  <th>Tienda</th>
                   <th>Productos</th>
                   <th>Total</th>
                   <th>Puntos ganados</th>
@@ -107,6 +108,7 @@ export default function HistoryPage() {
                   {purchases.map(p => (
                     <tr key={p.id}>
                       <td style={{ color: 'var(--text2)', fontSize: 12 }}>{new Date(p.created_at).toLocaleString('es-BO')}</td>
+                      <td style={{ fontSize: 12 }}>{p.stores?.name || '—'}</td>
                       <td>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                           {(p.purchase_items || []).map((it, i) => (

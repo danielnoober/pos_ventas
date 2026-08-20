@@ -1,15 +1,18 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { ShoppingCart, ClipboardList, Gift, Settings, LogOut, Star, Monitor } from 'lucide-react'
+import { ShoppingCart, ClipboardList, Gift, Settings, LogOut, Star, Monitor, Store } from 'lucide-react'
 import { useAuth } from '../lib/auth'
+import { useStore } from '../lib/store'
 
 export default function Layout({ children }) {
   const { user, logout } = useAuth()
+  const { stores, currentStore, setCurrentStore } = useStore()
   const navigate = useNavigate()
 
   const handleLogout = () => { logout(); navigate('/login') }
 
   const openCustomerScreen = () => {
-    window.open('/cliente', 'pantalla-cliente', 'width=1280,height=720,menubar=no,toolbar=no,location=no,status=no')
+    if (!currentStore) return
+    window.open(`/cliente/${currentStore.id}`, `pantalla-cliente-${currentStore.id}`, 'width=1280,height=720,menubar=no,toolbar=no,location=no,status=no')
   }
 
   const navItems = [
@@ -57,7 +60,29 @@ export default function Layout({ children }) {
 
         {/* Right */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button className="btn btn-ghost btn-sm" onClick={openCustomerScreen}>
+          {/* Store switcher (admin) / store badge (employee) */}
+          {user?.role === 'admin' ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: 'var(--surface2)', borderRadius: 8, border: '1px solid var(--border)' }}>
+              <Store size={14} color="var(--text2)" />
+              <select
+                value={currentStore?.id || ''}
+                onChange={e => setCurrentStore(stores.find(s => s.id === e.target.value) || null)}
+                style={{
+                  border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer',
+                  fontFamily: 'Outfit, sans-serif', fontSize: 13, fontWeight: 600, color: 'var(--text)',
+                }}
+              >
+                {stores.length === 0 && <option value="">Sin tiendas</option>}
+                {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+          ) : currentStore && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: 'var(--surface2)', borderRadius: 8, border: '1px solid var(--border)' }}>
+              <Store size={14} color="var(--text2)" />
+              <span style={{ fontFamily: 'Outfit, sans-serif', fontSize: 13, fontWeight: 600 }}>{currentStore.name}</span>
+            </div>
+          )}
+          <button className="btn btn-ghost btn-sm" onClick={openCustomerScreen} disabled={!currentStore} title={!currentStore ? 'Selecciona una tienda primero' : ''}>
             <Monitor size={15} /> Pantalla Cliente
           </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', background: 'var(--surface2)', borderRadius: 8, border: '1px solid var(--border)' }}>

@@ -1,38 +1,40 @@
 /**
  * posChannel.js
- * 
- * Uses Supabase Realtime BROADCAST to sync POS state 
+ *
+ * Uses Supabase Realtime BROADCAST to sync POS state
  * (order + client) to the customer screen in real time.
- * 
+ *
  * Broadcast is WebSocket-based and does NOT require a DB table.
  * Both windows must be open in the same browser (same session)
  * OR on different devices connected to the same Supabase project.
- * 
- * Channel: 'pos-colque'
+ *
+ * Each store gets its own channel (`pos-store-<storeId>`) so that
+ * two stores running the POS at the same time never see each
+ * other's live order on their customer screens.
+ *
  * Event:   'pos-state'
  * Payload: { order, client, cashReceived, lastPurchase }
  */
 
 import { supabase } from './supabase'
 
-const CHANNEL_NAME = 'pos-colque'
-const EVENT_NAME   = 'pos-state'
+const EVENT_NAME = 'pos-state'
 
-let _channel = null
+const channels = new Map() // storeId -> channel
 
-function getChannel() {
-  if (!_channel) {
-    _channel = supabase.channel(CHANNEL_NAME, {
+function getChannel(storeId) {
+  if (!channels.has(storeId)) {
+    channels.set(storeId, supabase.channel(`pos-store-${storeId}`, {
       config: { broadcast: { self: true } },
-    })
+    }))
   }
-  return _channel
+  return channels.get(storeId)
 }
 
-/** Broadcast current POS state to all listeners (including self) */
-export async function broadcastState(payload) {
-  const ch = getChannel()
-  // Subscribe first if not subscribed
+/** Broadcast current POS state to all listeners (including self) for a given store */
+export async function broadcastState(storeId, payload) {
+  if (!storeId) return
+  const ch = getChannel(storeId)
   if (ch.state !== 'joined') {
     await new Promise(resolve => {
       ch.subscribe(status => { if (status === 'SUBSCRIBED') resolve() })
@@ -41,15 +43,16 @@ export async function broadcastState(payload) {
   await ch.send({ type: 'broadcast', event: EVENT_NAME, payload })
 }
 
-/** Listen for POS state updates. Returns an unsubscribe function. */
-export function listenState(callback) {
-  const ch = getChannel()
+/** Listen for POS state updates for a given store. Returns an unsubscribe function. */
+export function listenState(storeId, callback) {
+  if (!storeId) return () => {}
+  const ch = getChannel(storeId)
   ch.on('broadcast', { event: EVENT_NAME }, ({ payload }) => callback(payload))
   if (ch.state !== 'joined' && ch.state !== 'joining') {
     ch.subscribe()
   }
   return () => {
     ch.unsubscribe()
-    _channel = null
+    channels.delete(storeId)
   }
 }

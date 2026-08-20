@@ -21,7 +21,7 @@ export default function LoginPage() {
     try {
       const { data, error } = await supabase
         .from('system_users')
-        .select('*')
+        .select('*, stores(id, name)')
         .eq('username', username)
         .eq('password_hash', password)
         .eq('role', role)

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from '../lib/toast'
+import { useStore } from '../lib/store'
 import { Modal, ImageUpload, Confirm } from '../components/UI'
-import { Plus, Pencil, Trash2, Package, Gift, Users, Star, Image, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Plus, Pencil, Trash2, Package, Gift, Users, Star, Image, ToggleLeft, ToggleRight, Store, UserCog, Copy } from 'lucide-react'
 
 const toTitleCase = (str) => str.trim().toLowerCase().replace(/\b\w/g, c => c.toUpperCase())
 
@@ -11,6 +12,8 @@ const TABS = [
   { key: 'gifts',    label: 'Regalos',    Icon: Gift },
   { key: 'clients',  label: 'Clientes',   Icon: Users },
   { key: 'slides',   label: 'Anuncios',   Icon: Image },
+  { key: 'stores',   label: 'Tiendas',    Icon: Store },
+  { key: 'users',    label: 'Empleados',  Icon: UserCog },
 ]
 
 const OPERATORS = ['Entel', 'Viva', 'Tigo', 'General']
@@ -50,6 +53,8 @@ export default function AdminPage() {
       {tab === 'gifts'    && <GiftsCRUD    setConfirm={setConfirmMsg} />}
       {tab === 'clients'  && <ClientsCRUD  setConfirm={setConfirmMsg} />}
       {tab === 'slides'   && <SlidesCRUD    setConfirm={setConfirmMsg} />}
+      {tab === 'stores'   && <StoresCRUD   setConfirm={setConfirmMsg} />}
+      {tab === 'users'    && <UsersCRUD    setConfirm={setConfirmMsg} />}
 
       {confirmMsg && (
         <Confirm
@@ -66,15 +71,37 @@ export default function AdminPage() {
    PRODUCTS CRUD
 ═══════════════════════════════════════════════ */
 function ProductsCRUD({ setConfirm }) {
+  const { currentStore, stores, setCurrentStore } = useStore()
   const [items, setItems] = useState([])
   const [modal, setModal] = useState(null) // null | 'new' | product
   const [form, setForm] = useState({})
   const [saving, setSaving] = useState(false)
+  const [copyModal, setCopyModal] = useState(false)
+  const [copySource, setCopySource] = useState('')
+  const [copying, setCopying] = useState(false)
 
-  useEffect(() => { fetch() }, [])
+  useEffect(() => { if (currentStore) fetch(); else setItems([]) }, [currentStore])
   const fetch = async () => {
-    const { data } = await supabase.from('products').select('*').order('operator').order('price')
+    const { data } = await supabase.from('products').select('*').eq('store_id', currentStore.id).order('operator').order('price')
     setItems(data || [])
+  }
+
+  const copyFromStore = async () => {
+    if (!copySource) return
+    setCopying(true)
+    try {
+      const { data: source, error: fErr } = await supabase.from('products').select('*').eq('store_id', copySource)
+      if (fErr) throw fErr
+      if (!source || source.length === 0) { toast('Esa tienda no tiene productos para copiar', 'error'); return }
+      const rows = source.map(p => ({
+        name: p.name, price: p.price, operator: p.operator, category: p.category,
+        image_url: p.image_url, in_stock: p.in_stock, store_id: currentStore.id,
+      }))
+      const { error: iErr } = await supabase.from('products').insert(rows)
+      if (iErr) throw iErr
+      toast(`${rows.length} productos copiados a ${currentStore.name}`, 'success')
+      setCopyModal(false); setCopySource(''); fetch()
+    } catch (e) { toast(e.message, 'error') } finally { setCopying(false) }
   }
 
   const openNew = () => {
@@ -88,7 +115,7 @@ function ProductsCRUD({ setConfirm }) {
     setSaving(true)
     try {
       if (modal === 'new') {
-        const { error } = await supabase.from('products').insert({ name: form.name, price: parseFloat(form.price), operator: form.operator, category: form.category, image_url: form.image_url || null, in_stock: form.in_stock })
+        const { error } = await supabase.from('products').insert({ name: form.name, price: parseFloat(form.price), operator: form.operator, category: form.category, image_url: form.image_url || null, in_stock: form.in_stock, store_id: currentStore.id })
         if (error) throw error
         toast('Producto creado', 'success')
       } else {
@@ -105,10 +132,34 @@ function ProductsCRUD({ setConfirm }) {
     toast('Producto eliminado', 'info'); fetch()
   }})
 
+  if (!currentStore) {
+    return (
+      <div className="empty-state" style={{ padding: 40 }}>
+        <Store size={36} />
+        <p>{stores.length === 0 ? 'Crea una tienda primero en la pestaña "Tiendas"' : 'Selecciona una tienda arriba para gestionar sus productos'}</p>
+      </div>
+    )
+  }
+
   return (
     <>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
-        <button className="btn btn-primary" onClick={openNew}><Plus size={15} /> Nuevo Producto</button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text2)' }}>
+          Gestionando productos de:
+          <select
+            className="input" style={{ width: 'auto', fontWeight: 700 }}
+            value={currentStore.id}
+            onChange={e => setCurrentStore(stores.find(s => s.id === e.target.value) || null)}
+          >
+            {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {stores.length > 1 && (
+            <button className="btn btn-ghost" onClick={() => setCopyModal(true)}><Copy size={15} /> Copiar de otra tienda</button>
+          )}
+          <button className="btn btn-primary" onClick={openNew}><Plus size={15} /> Nuevo Producto</button>
+        </div>
       </div>
       <div className="table-wrap">
         <table>
@@ -189,6 +240,28 @@ function ProductsCRUD({ setConfirm }) {
               <option value="false">Agotado</option>
             </select>
           </div>
+        </Modal>
+      )}
+
+      {copyModal && (
+        <Modal title="Copiar productos de otra tienda" onClose={() => setCopyModal(false)}
+          footer={<>
+            <button className="btn btn-ghost" onClick={() => setCopyModal(false)}>Cancelar</button>
+            <button className="btn btn-primary" onClick={copyFromStore} disabled={!copySource || copying}>
+              <Copy size={15} /> {copying ? 'Copiando…' : 'Copiar productos'}
+            </button>
+          </>}
+        >
+          <div className="input-group">
+            <label className="input-label">Tienda de origen</label>
+            <select className="input" value={copySource} onChange={e => setCopySource(e.target.value)}>
+              <option value="" disabled>Elige una tienda…</option>
+              {stores.filter(s => s.id !== currentStore.id).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--text3)' }}>
+            Se copiarán todos los productos (nombre, precio, operadora, categoría, imagen y stock) de esa tienda hacia <strong>{currentStore.name}</strong> como productos nuevos e independientes — podrás ajustar los precios después. Si vuelves a copiar, se duplicarán.
+          </p>
         </Modal>
       )}
     </>
@@ -540,6 +613,250 @@ function SlidesCRUD({ setConfirm }) {
               <option value="true">Activo (se muestra)</option>
               <option value="false">Inactivo (oculto)</option>
             </select>
+          </div>
+        </Modal>
+      )}
+    </>
+  )
+}
+
+/* ═══════════════════════════════════════════════
+   STORES CRUD — Tiendas
+═══════════════════════════════════════════════ */
+function StoresCRUD({ setConfirm }) {
+  const { stores: items, refreshStores } = useStore()
+  const [modal, setModal] = useState(null)
+  const [form, setForm] = useState({})
+  const [saving, setSaving] = useState(false)
+
+  const openNew  = () => { setForm({ name: '', address: '', active: true }); setModal('new') }
+  const openEdit = s => { setForm({ ...s }); setModal(s) }
+
+  const save = async () => {
+    if (!form.name?.trim()) { toast('El nombre de la tienda es obligatorio', 'error'); return }
+    setSaving(true)
+    try {
+      const payload = { name: form.name.trim(), address: form.address?.trim() || null, active: form.active }
+      if (modal === 'new') {
+        const { error } = await supabase.from('stores').insert(payload)
+        if (error) throw error
+        toast('Tienda creada', 'success')
+      } else {
+        const { error } = await supabase.from('stores').update(payload).eq('id', modal.id)
+        if (error) throw error
+        toast('Tienda actualizada', 'success')
+      }
+      setModal(null); refreshStores()
+    } catch (e) { toast(e.message, 'error') } finally { setSaving(false) }
+  }
+
+  const del = (s) => setConfirm({ msg: `¿Eliminar la tienda "${s.name}"? Esto fallará si aún tiene productos o empleados asignados.`, onConfirm: async () => {
+    const { error } = await supabase.from('stores').delete().eq('id', s.id)
+    if (error) toast('No se pudo eliminar: ' + error.message, 'error')
+    else toast('Tienda eliminada', 'info')
+    refreshStores()
+  }})
+
+  const toggleActive = async (s) => {
+    await supabase.from('stores').update({ active: !s.active }).eq('id', s.id)
+    refreshStores()
+  }
+
+  return (
+    <>
+      <div style={{ marginBottom: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <p style={{ color: 'var(--text2)', fontSize: 14 }}>
+          Cada tienda tiene su propio catálogo de productos y precios, y su propia Pantalla Cliente en tiempo real.
+        </p>
+        <button className="btn btn-primary" onClick={openNew}><Plus size={15} /> Nueva Tienda</button>
+      </div>
+      <div className="table-wrap">
+        <table>
+          <thead><tr><th>Nombre</th><th>Dirección</th><th>Estado</th><th>Acciones</th></tr></thead>
+          <tbody>
+            {items.map(s => (
+              <tr key={s.id}>
+                <td style={{ fontWeight: 600 }}>{s.name}</td>
+                <td style={{ color: 'var(--text2)', fontSize: 13 }}>{s.address || '—'}</td>
+                <td><span className={`badge ${s.active ? 'badge-green' : 'badge-gray'}`}>{s.active ? 'Activa' : 'Inactiva'}</span></td>
+                <td>
+                  <div style={{ display: 'flex', gap: 7 }}>
+                    <button className="btn btn-ghost btn-sm" onClick={() => toggleActive(s)} title={s.active ? 'Desactivar' : 'Activar'}>
+                      {s.active ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
+                    </button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => openEdit(s)}><Pencil size={13} /> Editar</button>
+                    <button className="btn btn-danger btn-sm" onClick={() => del(s)}><Trash2 size={13} /></button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {items.length === 0 && (
+              <tr><td colSpan={4}><div className="empty-state"><Store size={32} /><p>Sin tiendas aún. Crea la primera.</p></div></td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {modal !== null && (
+        <Modal title={modal === 'new' ? 'Nueva Tienda' : 'Editar Tienda'} onClose={() => setModal(null)}
+          footer={<>
+            <button className="btn btn-ghost" onClick={() => setModal(null)}>Cancelar</button>
+            <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? 'Guardando…' : 'Guardar'}</button>
+          </>}
+        >
+          <div className="input-group">
+            <label className="input-label">Nombre *</label>
+            <input className="input" value={form.name || ''} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Sucursal Norte" autoFocus />
+          </div>
+          <div className="input-group">
+            <label className="input-label">Dirección</label>
+            <input className="input" value={form.address || ''} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder="Av. Siempre Viva 123" />
+          </div>
+          <div className="input-group">
+            <label className="input-label">Estado</label>
+            <select className="input" value={String(form.active)} onChange={e => setForm(f => ({ ...f, active: e.target.value === 'true' }))}>
+              <option value="true">Activa</option>
+              <option value="false">Inactiva</option>
+            </select>
+          </div>
+        </Modal>
+      )}
+    </>
+  )
+}
+
+/* ═══════════════════════════════════════════════
+   USERS CRUD — Empleados (asignación de tienda)
+═══════════════════════════════════════════════ */
+function UsersCRUD({ setConfirm }) {
+  const { stores } = useStore()
+  const [items, setItems] = useState([])
+  const [modal, setModal] = useState(null)
+  const [form, setForm] = useState({})
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => { fetch() }, [])
+  const fetch = async () => {
+    const { data } = await supabase.from('system_users').select('*, stores(id, name)').order('full_name')
+    setItems(data || [])
+  }
+
+  const openNew  = () => { setForm({ username: '', password_hash: '', full_name: '', role: 'employee', store_id: stores[0]?.id || '' }); setModal('new') }
+  const openEdit = u => { setForm({ ...u, store_id: u.store_id || '' }); setModal(u) }
+
+  const save = async () => {
+    if (!form.username?.trim() || !form.password_hash?.trim() || !form.full_name?.trim()) {
+      toast('Usuario, contraseña y nombre son obligatorios', 'error'); return
+    }
+    if (form.role === 'employee' && !form.store_id) {
+      toast('Asigna una tienda al empleado', 'error'); return
+    }
+    setSaving(true)
+    try {
+      const payload = {
+        username: form.username.trim(),
+        password_hash: form.password_hash.trim(),
+        full_name: form.full_name.trim(),
+        role: form.role,
+        store_id: form.role === 'employee' ? form.store_id : null,
+      }
+      if (modal === 'new') {
+        const { error } = await supabase.from('system_users').insert(payload)
+        if (error) throw error
+        toast('Empleado creado', 'success')
+      } else {
+        const { error } = await supabase.from('system_users').update(payload).eq('id', modal.id)
+        if (error) throw error
+        toast('Empleado actualizado', 'success')
+      }
+      setModal(null); fetch()
+    } catch (e) {
+      toast(e.message.includes('duplicate') || e.message.includes('unique') ? 'Ese usuario ya existe' : e.message, 'error')
+    } finally { setSaving(false) }
+  }
+
+  const del = (u) => setConfirm({ msg: `¿Eliminar el usuario "${u.username}"?`, onConfirm: async () => {
+    await supabase.from('system_users').delete().eq('id', u.id)
+    toast('Usuario eliminado', 'info'); fetch()
+  }})
+
+  return (
+    <>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
+        <button className="btn btn-primary" onClick={openNew}><Plus size={15} /> Nuevo Usuario</button>
+      </div>
+      <div className="table-wrap">
+        <table>
+          <thead><tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Tienda</th><th>Acciones</th></tr></thead>
+          <tbody>
+            {items.map(u => (
+              <tr key={u.id}>
+                <td><code style={{ background: 'var(--surface2)', padding: '2px 7px', borderRadius: 5, fontSize: 12 }}>{u.username}</code></td>
+                <td style={{ fontWeight: 600 }}>{u.full_name}</td>
+                <td>
+                  <span className={`badge ${u.role === 'admin' ? 'badge-red' : 'badge-blue'}`}>
+                    {u.role === 'admin' ? 'Administrador' : 'Empleado'}
+                  </span>
+                </td>
+                <td style={{ color: 'var(--text2)', fontSize: 13 }}>{u.role === 'admin' ? 'Todas' : (u.stores?.name || '— sin asignar —')}</td>
+                <td>
+                  <div style={{ display: 'flex', gap: 7 }}>
+                    <button className="btn btn-ghost btn-sm" onClick={() => openEdit(u)}><Pencil size={13} /> Editar</button>
+                    <button className="btn btn-danger btn-sm" onClick={() => del(u)}><Trash2 size={13} /></button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {items.length === 0 && (
+              <tr><td colSpan={5}><div className="empty-state"><UserCog size={32} /><p>Sin usuarios</p></div></td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {modal !== null && (
+        <Modal
+          title={modal === 'new' ? 'Nuevo Usuario' : 'Editar Usuario'}
+          onClose={() => setModal(null)}
+          footer={<>
+            <button className="btn btn-ghost" onClick={() => setModal(null)}>Cancelar</button>
+            <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? 'Guardando…' : 'Guardar'}</button>
+          </>}
+        >
+          <div className="form-row">
+            <div className="input-group">
+              <label className="input-label">Usuario *</label>
+              <input className="input" value={form.username || ''} onChange={e => setForm(f => ({ ...f, username: e.target.value }))} placeholder="jperez" />
+            </div>
+            <div className="input-group">
+              <label className="input-label">Contraseña *</label>
+              <input className="input" value={form.password_hash || ''} onChange={e => setForm(f => ({ ...f, password_hash: e.target.value }))} placeholder="••••••••" />
+            </div>
+          </div>
+          <div className="input-group">
+            <label className="input-label">Nombre completo *</label>
+            <input className="input" value={form.full_name || ''} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} placeholder="Nombre Apellido" />
+          </div>
+          <div className="form-row">
+            <div className="input-group">
+              <label className="input-label">Rol *</label>
+              <select className="input" value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}>
+                <option value="employee">Empleado</option>
+                <option value="admin">Administrador</option>
+              </select>
+            </div>
+            <div className="input-group">
+              <label className="input-label">Tienda asignada {form.role === 'employee' && '*'}</label>
+              <select
+                className="input" value={form.store_id || ''}
+                disabled={form.role === 'admin'}
+                onChange={e => setForm(f => ({ ...f, store_id: e.target.value }))}
+              >
+                <option value="" disabled>Elige una tienda…</option>
+                {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+              {form.role === 'admin' && <span style={{ fontSize: 11, color: 'var(--text3)' }}>Los administradores pueden operar cualquier tienda</span>}
+            </div>
           </div>
         </Modal>
       )}

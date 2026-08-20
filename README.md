@@ -65,6 +65,10 @@ git push -u origin main
 > ⚠️ Cambia las contraseñas en Supabase después del primer ingreso:
 > `UPDATE system_users SET password_hash = 'nueva_clave' WHERE username = 'admin';`
 
+> ⚠️ Tras correr la migración multi-tienda, el usuario `empleado` no tiene tienda asignada
+> todavía. Entra como `admin` → **Administración → Empleados** y asígnale una tienda,
+> o no podrá usar el Punto de Venta.
+
 ---
 
 ## 📁 Estructura del proyecto
@@ -83,29 +87,38 @@ fidelitypos/
     ├── lib/
     │   ├── supabase.js       ← Cliente Supabase + uploadImage()
     │   ├── auth.jsx          ← Contexto de autenticación
+    │   ├── store.jsx         ← Contexto de tienda activa (admin cambia, empleado fijo)
+    │   ├── posChannel.js     ← Broadcast en tiempo real, un canal por tienda
     │   └── toast.jsx         ← Notificaciones
     ├── components/
-    │   ├── Layout.jsx        ← Topbar + navegación
-    │   ├── CustomerScreen.jsx← Pantalla del cliente (2° monitor)
+    │   ├── Layout.jsx        ← Topbar + navegación + selector de tienda
     │   └── UI.jsx            ← Modal, ImageUpload, SearchInput, Confirm
     └── pages/
         ├── LoginPage.jsx     ← Login con selector Admin/Empleado
-        ├── POSPage.jsx       ← Punto de venta
-        ├── HistoryPage.jsx   ← Historial de compras por cliente
+        ├── POSPage.jsx       ← Punto de venta (productos de la tienda activa)
+        ├── CustomerScreen.jsx← Pantalla del cliente por tienda (ruta /cliente/:storeId)
+        ├── HistoryPage.jsx   ← Historial de compras por cliente (con tienda)
         ├── RedeemPage.jsx    ← Canje de puntos por regalos
-        └── AdminPage.jsx     ← CRUD: Productos, Regalos, Clientes
+        └── AdminPage.jsx     ← CRUD: Productos, Regalos, Clientes, Anuncios, Tiendas, Empleados
 ```
 
 ---
 
 ## ✨ Funcionalidades
 
+### Multi-tienda
+- El admin crea tiendas y, dentro de cada una, su propio catálogo de productos y precios
+- Cada empleado se asigna a una única tienda (Administración → Empleados) y solo opera esa tienda
+- El admin puede vender por cualquier tienda usando el selector de tienda en la barra superior
+- Cada tienda tiene su propia Pantalla Cliente en tiempo real (`/cliente/<id-tienda>`), así que dos tiendas vendiendo al mismo tiempo no se mezclan
+- Clientes, puntos y catálogo de regalos son compartidos entre todas las tiendas (un solo programa de fidelización)
+
 ### Punto de Venta (Empleado + Admin)
-- Filtro de productos por operadora (Entel / Viva / Tigo / General)
+- Filtro de productos por operadora (Entel / Viva / Tigo / General), acotado a la tienda activa
 - Búsqueda de cliente con autocompletado en tiempo real (debounce 180ms)
 - Pedido dinámico con ajuste de cantidades
 - Registro de compra → suma puntos automáticamente (`total ÷ 10`)
-- Pantalla del cliente en tiempo real (para segunda pantalla/monitor)
+- Pantalla del cliente en tiempo real (para segunda pantalla/monitor), independiente por tienda
 
 ### Historial
 - Búsqueda rápida de cliente
@@ -118,9 +131,12 @@ fidelitypos/
 - Registro del canje con nombre del regalo y puntos usados
 
 ### Administración (solo Admin)
-- **Productos**: Crear/editar/eliminar con imagen, precio, operadora, categoría, stock
-- **Regalos**: Crear/editar/eliminar con imagen y puntos requeridos
-- **Clientes**: Crear/editar/eliminar con ID automático, ajuste manual de puntos
+- **Productos**: Crear/editar/eliminar con imagen, precio, operadora, categoría, stock — por tienda
+- **Regalos**: Crear/editar/eliminar con imagen y puntos requeridos (compartido entre tiendas)
+- **Clientes**: Crear/editar/eliminar con ID automático, ajuste manual de puntos (compartido entre tiendas)
+- **Anuncios**: Slides para la pantalla de cliente en modo inactivo
+- **Tiendas**: Crear/editar/desactivar tiendas
+- **Empleados**: Crear/editar usuarios y asignarles la tienda en la que trabajan
 
 ### Imágenes
 - Subida directa a Supabase Storage desde el panel admin
@@ -131,12 +147,13 @@ fidelitypos/
 
 ## 🗄️ Tablas en Supabase
 
-| Tabla            | Descripción                              |
-|------------------|------------------------------------------|
-| `system_users`   | Usuarios del sistema (admin/empleado)    |
-| `clients`        | Clientes con acumulado de puntos         |
-| `products`       | Catálogo de tarjetas de recarga          |
-| `gifts`          | Catálogo de regalos canjeables           |
-| `purchases`      | Cabecera de cada compra                  |
-| `purchase_items` | Detalle de productos por compra          |
-| `redemptions`    | Registro de canjes de puntos             |
+| Tabla            | Descripción                                          |
+|------------------|-------------------------------------------------------|
+| `stores`         | Tiendas administradas por el sistema                   |
+| `system_users`   | Usuarios del sistema (admin/empleado), empleado → tienda |
+| `clients`        | Clientes con acumulado de puntos (global)              |
+| `products`       | Catálogo de tarjetas de recarga, por tienda            |
+| `gifts`          | Catálogo de regalos canjeables (global)                |
+| `purchases`      | Cabecera de cada compra, con tienda                    |
+| `purchase_items` | Detalle de productos por compra                        |
+| `redemptions`    | Registro de canjes de puntos (global)                  |
