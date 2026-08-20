@@ -34,10 +34,10 @@ export default function AdminPage() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+      <div className="admin-tabs" style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
         {TABS.map(({ key, label, Icon }) => (
           <button key={key} onClick={() => setTab(key)} style={{
-            display: 'flex', alignItems: 'center', gap: 7,
+            display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0, whiteSpace: 'nowrap',
             padding: '9px 20px', borderRadius: 10, border: '1.5px solid',
             fontFamily: 'Outfit, sans-serif', fontSize: 14, fontWeight: 600, cursor: 'pointer', transition: '.15s',
             borderColor: tab === key ? 'var(--red)' : 'var(--border)',
@@ -143,8 +143,8 @@ function ProductsCRUD({ setConfirm }) {
 
   return (
     <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text2)' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text2)', flexWrap: 'wrap' }}>
           Gestionando productos de:
           <select
             className="input" style={{ width: 'auto', fontWeight: 700 }}
@@ -154,7 +154,7 @@ function ProductsCRUD({ setConfirm }) {
             {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {stores.length > 1 && (
             <button className="btn btn-ghost" onClick={() => setCopyModal(true)}><Copy size={15} /> Copiar de otra tienda</button>
           )}
@@ -167,26 +167,26 @@ function ProductsCRUD({ setConfirm }) {
           <tbody>
             {items.map(p => (
               <tr key={p.id}>
-                <td>
+                <td className="cell-media">
                   {p.image_url
                     ? <img src={p.image_url} alt="" style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--border)' }} />
                     : <div style={{ width: 44, height: 44, borderRadius: 8, background: OP_BG[p.operator] || '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Fraunces,serif', fontWeight: 700, color: OP_COLORS[p.operator] || '#6B7280', fontSize: 18 }}>{p.operator[0]}</div>
                   }
                 </td>
-                <td style={{ fontWeight: 600 }}>{p.name}</td>
-                <td>
+                <td data-label="Nombre" style={{ fontWeight: 600 }}>{p.name}</td>
+                <td data-label="Operadora">
                   <span style={{ fontSize: 11, fontWeight: 700, color: OP_COLORS[p.operator] || 'var(--text2)', background: OP_BG[p.operator] || '#F3F4F6', padding: '3px 10px', borderRadius: 20 }}>
                     {p.operator}
                   </span>
                 </td>
-                <td style={{ color: 'var(--text2)', fontSize: 13 }}>{p.category}</td>
-                <td style={{ fontWeight: 700, color: 'var(--red)', fontFamily: 'Fraunces,serif' }}>Bs. {parseFloat(p.price).toFixed(2)}</td>
-                <td>
+                <td data-label="Categoría" style={{ color: 'var(--text2)', fontSize: 13 }}>{p.category}</td>
+                <td data-label="Precio" style={{ fontWeight: 700, color: 'var(--red)', fontFamily: 'Fraunces,serif' }}>Bs. {parseFloat(p.price).toFixed(2)}</td>
+                <td data-label="Stock">
                   <span className={`badge ${p.in_stock ? 'badge-green' : 'badge-gray'}`}>
                     {p.in_stock ? 'Disponible' : 'Agotado'}
                   </span>
                 </td>
-                <td>
+                <td className="cell-actions">
                   <div style={{ display: 'flex', gap: 7 }}>
                     <button className="btn btn-ghost btn-sm" onClick={() => openEdit(p)}><Pencil size={13} /> Editar</button>
                     <button className="btn btn-danger btn-sm" onClick={() => del(p.id)}><Trash2 size={13} /></button>
@@ -320,20 +320,20 @@ function GiftsCRUD({ setConfirm }) {
           <tbody>
             {items.map(g => (
               <tr key={g.id}>
-                <td>
+                <td className="cell-media">
                   {g.image_url
                     ? <img src={g.image_url} alt="" style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--border)' }} />
                     : <div style={{ width: 44, height: 44, borderRadius: 8, background: 'var(--blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Gift size={20} color="var(--blue)" /></div>
                   }
                 </td>
-                <td style={{ fontWeight: 600 }}>{g.name}</td>
-                <td>
+                <td data-label="Nombre" style={{ fontWeight: 600 }}>{g.name}</td>
+                <td data-label="Puntos">
                   <span className="badge badge-blue" style={{ gap: 5 }}>
                     <Star size={10} fill="currentColor" /> {g.points_required} pts
                   </span>
                 </td>
-                <td style={{ color: 'var(--text2)', fontSize: 12, maxWidth: 220 }}>{g.description || '—'}</td>
-                <td>
+                <td data-label="Descripción" style={{ color: 'var(--text2)', fontSize: 12, maxWidth: 220 }}>{g.description || '—'}</td>
+                <td className="cell-actions">
                   <div style={{ display: 'flex', gap: 7 }}>
                     <button className="btn btn-ghost btn-sm" onClick={() => openEdit(g)}><Pencil size={13} /> Editar</button>
                     <button className="btn btn-danger btn-sm" onClick={() => del(g.id)}><Trash2 size={13} /></button>
@@ -436,8 +436,8 @@ function ClientsCRUD({ setConfirm }) {
 
   return (
     <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 12 }}>
-        <div style={{ position: 'relative', width: 280 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 12 }}>
+        <div style={{ position: 'relative', width: '100%', maxWidth: 280 }}>
           <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)', display: 'flex' }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           </span>
@@ -451,15 +451,15 @@ function ClientsCRUD({ setConfirm }) {
           <tbody>
             {filtered.map(c => (
               <tr key={c.id}>
-                <td><code style={{ background: 'var(--surface2)', padding: '2px 7px', borderRadius: 5, fontSize: 12 }}>{c.id}</code></td>
-                <td style={{ fontWeight: 600 }}>{c.full_name}</td>
-                <td>
+                <td data-label="Cel/CI"><code style={{ background: 'var(--surface2)', padding: '2px 7px', borderRadius: 5, fontSize: 12 }}>{c.id}</code></td>
+                <td data-label="Nombre" style={{ fontWeight: 600 }}>{c.full_name}</td>
+                <td data-label="Puntos">
                   <span className="badge badge-blue" style={{ gap: 5 }}>
                     <Star size={10} fill="currentColor" /> {c.points}
                   </span>
                 </td>
-                <td style={{ color: 'var(--text2)', fontSize: 12 }}>{c.created_at}</td>
-                <td>
+                <td data-label="Registrado" style={{ color: 'var(--text2)', fontSize: 12 }}>{c.created_at}</td>
+                <td className="cell-actions">
                   <div style={{ display: 'flex', gap: 7 }}>
                     <button className="btn btn-ghost btn-sm" onClick={() => openEdit(c)}><Pencil size={13} /> Editar</button>
                     <button className="btn btn-danger btn-sm" onClick={() => del(c.id)}><Trash2 size={13} /></button>
@@ -552,7 +552,7 @@ function SlidesCRUD({ setConfirm }) {
 
   return (
     <>
-      <div style={{ marginBottom: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ marginBottom: 14, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
         <p style={{ color: 'var(--text2)', fontSize: 14 }}>
           Estos slides se muestran en la pantalla del cliente cuando no hay pedido activo.
         </p>
@@ -664,7 +664,7 @@ function StoresCRUD({ setConfirm }) {
 
   return (
     <>
-      <div style={{ marginBottom: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ marginBottom: 14, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
         <p style={{ color: 'var(--text2)', fontSize: 14 }}>
           Cada tienda tiene su propio catálogo de productos y precios, y su propia Pantalla Cliente en tiempo real.
         </p>
@@ -676,10 +676,10 @@ function StoresCRUD({ setConfirm }) {
           <tbody>
             {items.map(s => (
               <tr key={s.id}>
-                <td style={{ fontWeight: 600 }}>{s.name}</td>
-                <td style={{ color: 'var(--text2)', fontSize: 13 }}>{s.address || '—'}</td>
-                <td><span className={`badge ${s.active ? 'badge-green' : 'badge-gray'}`}>{s.active ? 'Activa' : 'Inactiva'}</span></td>
-                <td>
+                <td data-label="Nombre" style={{ fontWeight: 600 }}>{s.name}</td>
+                <td data-label="Dirección" style={{ color: 'var(--text2)', fontSize: 13 }}>{s.address || '—'}</td>
+                <td data-label="Estado"><span className={`badge ${s.active ? 'badge-green' : 'badge-gray'}`}>{s.active ? 'Activa' : 'Inactiva'}</span></td>
+                <td className="cell-actions">
                   <div style={{ display: 'flex', gap: 7 }}>
                     <button className="btn btn-ghost btn-sm" onClick={() => toggleActive(s)} title={s.active ? 'Desactivar' : 'Activar'}>
                       {s.active ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
@@ -791,15 +791,15 @@ function UsersCRUD({ setConfirm }) {
           <tbody>
             {items.map(u => (
               <tr key={u.id}>
-                <td><code style={{ background: 'var(--surface2)', padding: '2px 7px', borderRadius: 5, fontSize: 12 }}>{u.username}</code></td>
-                <td style={{ fontWeight: 600 }}>{u.full_name}</td>
-                <td>
+                <td data-label="Usuario"><code style={{ background: 'var(--surface2)', padding: '2px 7px', borderRadius: 5, fontSize: 12 }}>{u.username}</code></td>
+                <td data-label="Nombre" style={{ fontWeight: 600 }}>{u.full_name}</td>
+                <td data-label="Rol">
                   <span className={`badge ${u.role === 'admin' ? 'badge-red' : 'badge-blue'}`}>
                     {u.role === 'admin' ? 'Administrador' : 'Empleado'}
                   </span>
                 </td>
-                <td style={{ color: 'var(--text2)', fontSize: 13 }}>{u.role === 'admin' ? 'Todas' : (u.stores?.name || '— sin asignar —')}</td>
-                <td>
+                <td data-label="Tienda" style={{ color: 'var(--text2)', fontSize: 13 }}>{u.role === 'admin' ? 'Todas' : (u.stores?.name || '— sin asignar —')}</td>
+                <td className="cell-actions">
                   <div style={{ display: 'flex', gap: 7 }}>
                     <button className="btn btn-ghost btn-sm" onClick={() => openEdit(u)}><Pencil size={13} /> Editar</button>
                     <button className="btn btn-danger btn-sm" onClick={() => del(u)}><Trash2 size={13} /></button>

@@ -71,7 +71,7 @@ export default function HistoryPage() {
       {client && !loading && (
         <>
           {/* Client summary */}
-          <div className="card" style={{ padding: '20px 24px', marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20 }}>
+          <div className="card" style={{ padding: '20px 24px', marginBottom: 24, display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
               <div style={{ width: 50, height: 50, borderRadius: 14, background: 'linear-gradient(135deg,var(--red),var(--blue))', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:20 }}>
                 {client.full_name[0]}
@@ -107,9 +107,9 @@ export default function HistoryPage() {
                 <tbody>
                   {purchases.map(p => (
                     <tr key={p.id}>
-                      <td style={{ color: 'var(--text2)', fontSize: 12 }}>{new Date(p.created_at).toLocaleString('es-BO')}</td>
-                      <td style={{ fontSize: 12 }}>{p.stores?.name || '—'}</td>
-                      <td>
+                      <td data-label="Fecha" style={{ color: 'var(--text2)', fontSize: 12 }}>{new Date(p.created_at).toLocaleString('es-BO')}</td>
+                      <td data-label="Tienda" style={{ fontSize: 12 }}>{p.stores?.name || '—'}</td>
+                      <td data-label="Productos" className="cell-block">
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                           {(p.purchase_items || []).map((it, i) => (
                             <span key={i} style={{ fontSize: 11, background: 'var(--surface2)', borderRadius: 5, padding: '2px 8px', whiteSpace: 'nowrap' }}>
@@ -118,9 +118,9 @@ export default function HistoryPage() {
                           ))}
                         </div>
                       </td>
-                      <td><strong style={{ color: 'var(--red)' }}>Bs. {parseFloat(p.total).toFixed(2)}</strong></td>
-                      <td><span className="badge badge-green"><Star size={10} fill="currentColor" /> +{p.points_earned} pts</span></td>
-                      <td style={{ color: 'var(--text2)', fontSize: 12 }}>{p.created_by || '—'}</td>
+                      <td data-label="Total"><strong style={{ color: 'var(--red)' }}>Bs. {parseFloat(p.total).toFixed(2)}</strong></td>
+                      <td data-label="Puntos"><span className="badge badge-green"><Star size={10} fill="currentColor" /> +{p.points_earned} pts</span></td>
+                      <td data-label="Empleado" style={{ color: 'var(--text2)', fontSize: 12 }}>{p.created_by || '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -141,10 +141,10 @@ export default function HistoryPage() {
                 <tbody>
                   {redemptions.map(r => (
                     <tr key={r.id}>
-                      <td style={{ color: 'var(--text2)', fontSize: 12 }}>{new Date(r.created_at).toLocaleString('es-BO')}</td>
-                      <td><strong>{r.gift_name}</strong></td>
-                      <td><span className="badge badge-red">−{r.points_used} pts</span></td>
-                      <td style={{ color: 'var(--text2)', fontSize: 12 }}>{r.created_by || '—'}</td>
+                      <td data-label="Fecha" style={{ color: 'var(--text2)', fontSize: 12 }}>{new Date(r.created_at).toLocaleString('es-BO')}</td>
+                      <td data-label="Regalo"><strong>{r.gift_name}</strong></td>
+                      <td data-label="Puntos"><span className="badge badge-red">−{r.points_used} pts</span></td>
+                      <td data-label="Empleado" style={{ color: 'var(--text2)', fontSize: 12 }}>{r.created_by || '—'}</td>
                     </tr>
                   ))}
                 </tbody>

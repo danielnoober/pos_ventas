@@ -4,7 +4,7 @@ import { toast } from '../lib/toast'
 import { useAuth } from '../lib/auth'
 import { useStore } from '../lib/store'
 import { SearchInput, Modal } from '../components/UI'
-import { ShoppingCart, Trash2, CheckCircle, Star, Printer, UserPlus, X, Store } from 'lucide-react'
+import { ShoppingCart, Trash2, CheckCircle, Star, Printer, UserPlus, X, Store, ChevronUp, ArrowLeft } from 'lucide-react'
 
 const OPERATORS = ['Todos', 'Entel', 'Viva', 'Tigo', 'General']
 const OP_COLORS = { Entel: '#00AEEF', Viva: '#43A047', Tigo: '#1A3A8F', General: '#F57C00' }
@@ -55,6 +55,7 @@ export default function POSPage({
   const [showNewClient, setShowNewClient] = useState(false)
   const [newClientForm, setNewClientForm] = useState({ id: '', full_name: '' })
   const [savingClient, setSavingClient]   = useState(false)
+  const [mobileView, setMobileView]       = useState('products') // 'products' | 'cart' — only relevant <=768px
 
   useEffect(() => { if (currentStore) fetchProducts() }, [currentStore])
   const fetchProducts = async () => {
@@ -120,6 +121,7 @@ export default function POSPage({
 
   const clearAll = () => {
     setOrder([]); setCashReceived(''); setSelectedClient(null); setClientQuery(''); setSuggestions([])
+    setMobileView('products')
   }
 
   const validOrder = order.filter(i => parseInt(i.quantity) > 0)
@@ -270,10 +272,10 @@ export default function POSPage({
 
   return (
     <>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 460px', height: '100%', overflow: 'hidden' }}>
+      <div className="pos-shell">
 
         {/* ── LEFT: products ── */}
-        <div style={{ overflowY: 'auto', padding: '20px 20px 20px 24px' }}>
+        <div className={mobileView === 'cart' ? 'mobile-hide' : ''} style={{ overflowY: 'auto', padding: '20px 20px 20px 24px' }}>
           {/* Operator filter */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
             {OPERATORS.map(op => (
@@ -315,7 +317,20 @@ export default function POSPage({
         </div>
 
         {/* ── RIGHT: sidebar ── */}
-        <div style={{ borderLeft: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div className={mobileView === 'products' ? 'mobile-hide' : ''} style={{ borderLeft: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+          {/* Mobile: back to products */}
+          <button
+            className="mobile-only"
+            onClick={() => setMobileView('products')}
+            style={{
+              alignItems: 'center', gap: 6, padding: '10px 14px', border: 'none',
+              borderBottom: '1px solid var(--border)', background: 'var(--surface2)',
+              color: 'var(--text2)', fontFamily: 'Outfit, sans-serif', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+            }}
+          >
+            <ArrowLeft size={15} /> Volver a productos
+          </button>
 
           {/* Client */}
           <div style={{ padding: '16px 18px 14px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
@@ -554,6 +569,29 @@ export default function POSPage({
         </div>
       </div>
 
+      {/* Mobile: fixed cart summary bar — tap to open the full cart */}
+      {mobileView === 'products' && (order.length > 0 || selectedClient) && (
+        <button
+          className="mobile-only"
+          onClick={() => setMobileView('cart')}
+          style={{
+            position: 'fixed', left: 0, right: 0, bottom: 'var(--mobile-nav-h)', zIndex: 140,
+            alignItems: 'center', justifyContent: 'space-between',
+            padding: '14px 20px', border: 'none', borderTop: '1px solid var(--border)',
+            background: 'var(--red)', color: '#fff',
+            fontFamily: 'Outfit, sans-serif', cursor: 'pointer',
+            boxShadow: '0 -4px 14px rgba(0,0,0,.12)',
+          }}
+        >
+          <span style={{ fontSize: 14, fontWeight: 700 }}>
+            {validOrder.length} {validOrder.length === 1 ? 'item' : 'items'} · Bs. {total.toFixed(2)}
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 14, fontWeight: 800 }}>
+            Ver pedido <ChevronUp size={16} />
+          </span>
+        </button>
+      )}
+
       {/* New client modal */}
       {showNewClient && (
         <Modal title="Registrar Nuevo Cliente" onClose={() => setShowNewClient(false)}
@@ -697,9 +735,10 @@ function ProductCard({ product, onAdd }) {
   const opBg    = OP_BG[product.operator]    || '#F5F5F5'
   return (
     <div
+      className="product-card"
       onClick={() => product.in_stock && onAdd(product)}
       style={{
-        flexShrink: 0, width: 180,
+        flexShrink: 0,
         background: 'var(--surface)', border: '2px solid var(--border)', borderRadius: 14,
         overflow: 'hidden', cursor: product.in_stock ? 'pointer' : 'not-allowed',
         transition: 'all .15s', opacity: product.in_stock ? 1 : .5,
@@ -716,7 +755,7 @@ function ProductCard({ product, onAdd }) {
         e.currentTarget.style.transform = 'none'
       }}
     >
-      <div style={{ height: 100, background: opBg, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+      <div className="product-card-img" style={{ background: opBg, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
         {product.image_url
           ? <img src={product.image_url} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           : <span style={{ fontSize: 32, fontWeight: 900, color: opColor, fontFamily: 'Outfit, sans-serif', letterSpacing: '-1px', opacity: .75 }}>{product.operator}</span>

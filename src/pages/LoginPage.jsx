@@ -41,13 +41,13 @@ export default function LoginPage() {
   return (
     <div style={{
       minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'var(--bg)',
+      background: 'var(--bg)', padding: '24px 16px',
       backgroundImage: `
         radial-gradient(ellipse at 15% 50%, rgba(211,47,47,.06) 0%, transparent 55%),
         radial-gradient(ellipse at 85% 20%, rgba(21,101,192,.06) 0%, transparent 55%)
       `,
     }}>
-      <div style={{ width: 420 }}>
+      <div style={{ width: '100%', maxWidth: 420 }}>
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 36 }}>
           <div style={{

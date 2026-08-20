@@ -32,6 +32,7 @@
   --radius:     10px;
   --radius-lg:  16px;
   --radius-xl:  22px;
+  --mobile-nav-h: 60px;
 }
 
 html, body, #root {
@@ -196,4 +197,74 @@ mark { background: rgba(21,101,192,.15); color: var(--blue); border-radius: 2px;
 }
 .img-upload-zone:hover { border-color: var(--blue); background: var(--blue-light); }
 .img-preview { width: 100%; max-height: 160px; object-fit: contain; border-radius: var(--radius); margin-top: 10px; }
+
+/* ============================================================
+   RESPONSIVE — mobile (<=768px)
+   Design (colors, typography, radii, shadows) is untouched;
+   this section only changes layout/structure below the breakpoint.
+   ============================================================ */
+
+.mobile-only { display: none; }
+
+.pos-shell    { display: grid; grid-template-columns: 1fr 460px; height: 100%; overflow: hidden; position: relative; }
+.redeem-shell { display: grid; grid-template-columns: 1fr 340px; height: 100%; overflow: hidden; }
+
+.product-card { width: 180px; }
+.product-card .product-card-img { height: 100px; }
+
+@media (max-width: 768px) {
+  .desktop-only { display: none !important; }
+  .mobile-only  { display: flex; }
+
+  main.app-main { padding-bottom: var(--mobile-nav-h); overflow: auto; }
+
+  .form-row { grid-template-columns: 1fr; }
+
+  .pos-shell    { grid-template-columns: 1fr; overflow: visible; }
+  .redeem-shell { grid-template-columns: 1fr; overflow: visible; height: auto; }
+  .redeem-shell > :last-child { border-left: none !important; border-top: 1px solid var(--border); }
+
+  .mobile-hide { display: none !important; }
+
+  .admin-tabs { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+
+  /* Responsive tables: rows become label/value cards */
+  .table-wrap { border: none; overflow: visible; background: transparent; }
+  .table-wrap table, .table-wrap thead, .table-wrap tbody, .table-wrap tr, .table-wrap th, .table-wrap td {
+    display: block; width: 100%;
+  }
+  .table-wrap thead { display: none; }
+  .table-wrap tbody tr {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm); margin-bottom: 12px; padding: 6px 14px;
+  }
+  .table-wrap tbody tr:hover td { background: transparent; }
+  .table-wrap tbody td {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    border-bottom: 1px dashed var(--border); padding: 10px 0; text-align: right;
+  }
+  .table-wrap tbody td:last-child { border-bottom: none; }
+  .table-wrap tbody td::before {
+    content: attr(data-label); font-weight: 700; font-size: 11px; color: var(--text2);
+    text-transform: uppercase; letter-spacing: .3px; text-align: left; flex-shrink: 0;
+  }
+  .table-wrap tbody td.cell-media,
+  .table-wrap tbody td.cell-actions {
+    justify-content: flex-start;
+  }
+  .table-wrap tbody td.cell-media::before,
+  .table-wrap tbody td.cell-actions::before {
+    content: none;
+  }
+  .table-wrap tbody td.cell-actions > div { flex-wrap: wrap; }
+  .table-wrap tbody td.cell-block {
+    flex-direction: column; align-items: flex-start; gap: 6px; text-align: left;
+  }
+}
+
+@media (max-width: 480px) {
+  .product-card { width: 148px; }
+  .product-card .product-card-img { height: 84px; }
+  .modal-header, .modal-body, .modal-footer { padding-left: 18px; padding-right: 18px; }
+}
 

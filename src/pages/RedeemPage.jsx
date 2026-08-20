@@ -68,7 +68,7 @@ export default function RedeemPage() {
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', height: '100%', overflow: 'hidden' }}>
+    <div className="redeem-shell">
       {/* LEFT */}
       <div style={{ overflowY: 'auto', padding: '24px 24px' }}>
         <div className="page-header">
